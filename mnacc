@@ -1,0 +1,80 @@
+#!/bin/sh
+
+# オプション解析
+# 参考: https://qiita.com/ko1nksm/items/cea7e7cfdc9e25432bab
+    # https://qiita.com/go1101/items/37c5a58185e4dbea4d08
+DEFINE_FLAGS=
+TARGET_DEVICE=mncore2
+VSM=
+# 後ろにコロンを付けると引数あり
+# getoptsではロングオプションは使えない
+while getopts D:t:v OPT
+do
+    case $OPT in
+        D) DEFINE_FLAGS="$DEFINE_FLAGS -D$OPTARG"
+            ;;
+        t) TARGET_DEVICE="$OPTARG"
+            ;;
+        v) VSM="vsm"
+            ;;
+        *) exit 1
+            ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+# ファイルがなかったらエラー
+if [ $# -eq 0 ]; then
+    echo mnacc: no input file!
+    exit 1
+elif [ ! -e $1 ]; then
+    echo mnacc: $1 is not found!
+    exit 1
+fi
+
+# 必要があれば任意のパスに書き換える
+# デフォルトではmnaccの存在するディレクトリの絶対パスを取得
+BUILD_DIR=$(cd $(dirname $0); pwd)
+
+# export PATH=${BUILD_DIR}:$PATH
+
+# cd src/
+# 拡張子を除いたファイル名を取得
+# _FILENAME=`echo $1 | sed 's/\.[^\.]*$//'`
+_FILENAME=${1%.*}
+# TODO: カレントディレクトリにファイル出力するように書き換える？
+
+# まずプラグマの置き換え（プラグマ内のマクロ置き換えのため）
+om_replace_pragma ${_FILENAME}.c -o ${_FILENAME}_om.c
+
+# プリプロセッサ
+    # ifdefで__MNACC__を指定できるようにマクロを定義
+cc -E -D __MNACC__ $DEFINE_FLAGS ${_FILENAME}_om.c -o ${_FILENAME}_pp.c
+
+C_Front ${_FILENAME}_pp.c -facc -o ${_FILENAME}_pp.xml
+
+# トランスレータ前処理
+cp ${_FILENAME}_pp.xml ${_FILENAME}_in.xml
+
+    # 以下、バックエンドのバグ回避のための処理
+        # 以下はOpenMPでは不要（本番では不要）
+        sed -i -e "s/<\/ACCPragma>/<list\/><\/ACCPragma>/g" ${_FILENAME}_in.xml
+
+        # 以下2つはOpenMPでも必要（本番も必要）
+            # インデント削除
+            sed -i "s/^[ \t]*//" ${_FILENAME}_in.xml
+            # 改行削除
+            sed -i -z "s/\n//g" ${_FILENAME}_in.xml
+
+
+# cp ${_FILENAME}_in.xml ${_FILENAME}_out.xml
+python3 ${BUILD_DIR}/translator_C_to_MNCL.py $TARGET_DEVICE ${_FILENAME}_in.xml $VSM
+
+if [ -n "$VSM" ]; then
+    assemble3 ${_FILENAME}.vsm > ${_FILENAME}.asm
+    exit 0
+fi
+
+C_Back ${_FILENAME}_out.xml -o ${_FILENAME}_host.c
+# gcc -Wall -I${BUILD_DIR} ${_FILENAME}_out.c
