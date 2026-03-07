@@ -46,9 +46,10 @@ $ pip install lxml
 # 使い方
 
 まず、環境変数のパスを通す。  
-デフォルトでインストールした場合、mnaccの存在するディレクトリに移動して以下を行う。
+デフォルトのディレクトリ構成でインストールした場合、mnaccの存在するディレクトリに移動して以下を行う。
 ```
-$ export PATH=$PATH:${PWD}:${PWD}/XcodeML-Tools/bin
+$ echo "export PATH=$PATH:${PWD}:${PWD}/XcodeML-Tools/bin" >> ~/.bash_profile
+$ source ~/.bash_profile
 ```
 
 git cloneしたときに展開されるデフォルト配置からファイルを移動した場合は、mnacc、mnacfの中身に書かれているBUILD_DIRパスも適宜変更する。
