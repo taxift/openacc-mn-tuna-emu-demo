@@ -11,7 +11,7 @@ wget https://github.com/taxift/omni-compiler/raw/8a27425e464a06accc905dbe789d672
 
 # libxml2がない場合はインストールする（なんかaptで入れてもヘッダーが見つからないことがある）
 # libxml2が要求するglibcのバージョンがOSにあるものより新しい場合は、古いバージョンのlibxml2をインストールする
-wget ftp://xmlsoft.org/libxml2/libxml2-2.9.9.tar.gz
+wget http://xmlsoft.org/sources/libxml2-2.9.9.tar.gz
 tar xvfz libxml2-2.9.9.tar.gz
 cd libxml2-2.9.9
 # ※Pythonのあたりでコケるがxcodeml-toolsのインストールには関係ないので無視

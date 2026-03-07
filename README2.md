@@ -12,6 +12,15 @@ PyArmorを入れる。
 ```
 $ pip3 install pyarmor
 ```
+Ubuntu 22.04にPython3.9を入れて実行するにはひと手間必要だが、aptで簡単に導入するには以下のようにする。
+```
+$ sudo apt install -y software-properties-common
+$ sudo add-apt-repository ppa:deadsnakes/ppa
+$ sudo apt install -y python3.9
+$ sudo apt install -y python3.9-distutils
+$ python3.9 -m pip install lxml pyarmor
+```
+これに加えて、適宜mnaccの中身のpython3コマンドをpython3.9コマンドに変更したりする。
 # OpenACC for MN-Coreの仕様書
 doc/を参照。
 
