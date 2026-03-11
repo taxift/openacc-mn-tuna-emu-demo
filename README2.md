@@ -1,54 +1,94 @@
-# 追加のREADME
+# OpenACC for MN-Coreコンパイラ
 
-## 公開バージョン
-beta2026.03.1
+## これは何？
 
-### 動作確認環境
-Ubuntu 20.04、22.04
+OpenACC/MN-Coreの言語処理系のプロトタイプ実装。  
+OpenACCのファイルをMNCL（MN-Core用のOpenCL相当の言語）へ変換する。
 
-## 依存関係パッケージのインストール
-PyArmorを入れる。  
-なお、リポジトリに含まれているファイルはPython3.9で作成。
+ゆくゆくはMNCLからバイナリ変換するところまで呼び出して、一発変換できるようにする。
+
+## ファイル説明
+- test/
+    - テスト用のソースコードが入っているディレクトリ
+- build-xcodeml-tools.sh
+    - ソースファイル <-> XcodeML（中間コード表現形式）相互変換のためのツールをインストールするためのシェルスクリプト（適宜書き換えて使用）
+- mnacc
+    - コンパイラ実行コマンド（C言語版OpenACC -> MNCLコンパイルを行うシェルスクリプト）
+- ~~mnacf~~
+    - ~~コンパイラ実行コマンド（Fortran版OpenACC -> MNCLコンパイルを行うシェルスクリプト、未実装）~~
+- translator_C_to_MNCL.py
+    - コンパイラミドルウェア本体（C言語用）：XcodeML -> MNCL（ホストコード＋デバイスコード）
+- ~~translator_F_to_MNCL.py~~
+    - ~~コンパイラミドルウェア本体（Fortran用）：XcodeML -> MNCL（ホストコード＋デバイスコード）~~
+- MN_acc.h
+    - MNCLホストコードで使われるランタイム関数の宣言ヘッダーファイル
+
+# インストール
+動作環境はgccがインストール済みのLinuxを想定している。
+
+まず、XcodeML-Tools関連のプログラムビルドスクリプトbuild-xcodeml-tools.shを参照する。  
+このシェルスクリプトはDebian系Linux向けに書かれているため、もしDebian系Linuxではない場合は適宜`dnf`などにコマンドを修正すること。  
+
+git cloneしてできたディレクトリにインストールして良い場合は何も考えずに
 ```
-$ pip3 install pyarmor
+$ ./build-xcodeml-tools.sh
 ```
-Ubuntu 22.04にPython3.9を入れて実行するにはひと手間必要だが、aptで簡単に導入するには以下のようにする。
+を実行して、XcodeML-Tools関連のプログラムをインストールする。
+
+なお、必要に応じて、INSTALL_DIRやprefixのパスを任意のパスに書き換えて実行して良い。  
+また、もし既にインストール済みのパッケージがあれば適宜コメントアウトして良い。
+
+次に、XML解析用Pythonライブラリlxmlもインストールする。なお、2025年1月現在、最新版のlxmlにバグが発生している（将来的に修正されるというメッセージが出てくる）ため、バージョン5.1.0で動作確認している。
 ```
-$ sudo apt install -y software-properties-common
-$ sudo add-apt-repository ppa:deadsnakes/ppa
-$ sudo apt install -y python3.9
-$ sudo apt install -y python3.9-distutils
-$ python3.9 -m pip install lxml pyarmor
+$ pip install lxml
 ```
-これに加えて、適宜mnaccの中身のpython3コマンドをpython3.9コマンドに変更したりする。
-# OpenACC for MN-Coreの仕様書
-doc/を参照。
 
-# 現在OpenACC/MNコンパイラでできること
-- OpenACCをMNCLへ変換
-- OpenACCを直接アセンブリへ変換
+# 使い方
 
-どちらも制約があるが、それらはREADME.mdや以下の説明を参照。
-
-# OpenACCから直接アセンブリ生成
-## MN-Core2エミュレータ環境構築
-以下のページにあるエミュレータをダウンロードする。
-https://projects.preferred.jp/mn-core/#resources
+まず、環境変数のパスを通す。  
+デフォルトのディレクトリ構成でインストールした場合、mnaccの存在するディレクトリに移動して以下を行う。
 ```
-wget https://projects.preferred.jp/mn-core/assets/mncore2_emuenv_20240826.tar.xz
+$ echo "export PATH=$PATH:${PWD}:${PWD}/XcodeML-Tools/bin" >> ~/.bash_profile
+$ source ~/.bash_profile
 ```
-ファイルを解凍し、適宜中の資料を参照してインストールする。
 
-なお、変換後のアセンブリを理解するには以下のマニュアルの解読が必要。
-https://projects.preferred.jp/mn-core/assets/mncore2_dev_manual_ja.pdf
+git cloneしたときに展開されるデフォルト配置からファイルを移動した場合は、mnacc、mnacfの中身に書かれているBUILD_DIRパスも適宜変更する。
 
+## C言語
+```
+$ mnacc <file_name>.c
+```
 
-## コマンド実行方法
-doc/の「エミュレータ実行環境説明資料」を参照。  
-OpenACCから直接アセンブリへ変換してエミュレータ上で実行する流れを記載している。
+のようにすると、
 
-変換可能なコードの制約や生成されるファイル群についても記載。
+- <file_name>_host.c（MNCLホストコード）
+- <file_name>_device.cl（MNCLデバイスコード）
 
-# ライセンスについて
-PyArmorについてはPyArmorのライセンスに従ってください。  
-また、個別のファイルに再配布禁止等と書かれているものについては、リポジトリ全体のライセンスよりもそちらが優先されます。
+の2つのMNCLファイルが生成される。
+
+## Frotran
+
+まだできてないが、Cと同様、以下のように使う想定。
+```
+$ mnacf <file_name>.f90
+```
+生成されるファイル名はCと同じ予定（ホストコードはFortran?）。
+
+# 既知のバグ、できないことなど
+
+- 現時点での実装上の記述制約については[こちらのファイル](./current_restrictions.md)も参照
+
+- あまり心配無さそうだが、デバイス上でポインタの”アドレス”の書き換えはできない（中身の実体の書き換えは可）
+
+- ループ変数以外の変数名の被り処理には非対応（おかしなコードが吐かれる可能性があるので、必ず一意の変数名にする）
+
+- ホストコードの関数はまだダミー
+
+- 現状はまだプロトタイプであり、エラー処理等、まだ抜けがある（ご意見はお手柔らかに）
+
+# 質問等
+開発者の綱島＠神戸大まで
+
+tsunashima あっと gold.kobe-u.ac.jp  
+（所属フリーな転送アドレス：ryuta.tsunashima あっと alum.riken.jp）
+
